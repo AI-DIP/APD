@@ -14,11 +14,11 @@ The APD framework follows a distinct two-phase process: Training and Inference.
 
   When generating a prediction for a new data point, the APD algorithm follows these steps:
 
-  Region Identification: The system calculates the distance between the input sample and the available pairs of adversarial prototypes to determine which localized region the sample belongs to.
+  - Region Identification: The system calculates the distance between the input sample and the available pairs of adversarial prototypes to determine which localized region the sample belongs to.
 
-  Model Retrieval: The algorithm retrieves the specific prediction model associated with that identified region from the dictionary.
+  - Model Retrieval: The algorithm retrieves the specific prediction model associated with that identified region from the dictionary.
 
-  Final Prediction: The identified model is applied to the input data to produce the final output.
+  - Final Prediction: The identified model is applied to the input data to produce the final output.
 
 ## How to get prototypes
 Several approaches to prototype vectors identification of the APD exist, such as:
