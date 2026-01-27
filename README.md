@@ -5,6 +5,7 @@ The core concept of Adversarial Prototype Decomposition (APD) is based on identi
 ## How it works
 The APD framework follows a distinct two-phase process: Training and Inference.
 1. Training Phase (Decomposition and Local Modeling)
+   
   APD decomposes the global dataset into localized regions. By focusing on these smaller subsets of the input data, the algorithm enables highly efficient training of predictive models. A key advantage of APD is that it ensures each region encompasses a specific subspace of the decision boundary, providing the necessary context for models to learn complex local patterns. Then any standard prediction model can be trained within an identified region.
 
  Once training is complete, the individual local models are stored in a model dictionary. Each entry in this dictionary maps a specific regional subspace to its corresponding optimized predictive model.
