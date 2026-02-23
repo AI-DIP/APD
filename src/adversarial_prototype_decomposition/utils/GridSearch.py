@@ -4,8 +4,8 @@ from sklearn.model_selection import KFold
 from sklearn.base import clone
 from sklearn.metrics import accuracy_score
 from concurrent.futures import ProcessPoolExecutor
-from mlflow_connector import MlFlowConnector
-from apdlib.classifiers import APD_Classifier
+from src.adversarial_prototype_decomposition.utils.mlflow_connector import MlFlowConnector
+from src.adversarial_prototype_decomposition.classifier.classifiers import APD_Classifier
 
 class GridSearch:
     def __init__(self, estimator, param_grid: dict, scoring, n_jobs=None, cv=None, verbose: int = 0, ml_flow:MlFlowConnector=None, additional_params:dict=None) -> None:

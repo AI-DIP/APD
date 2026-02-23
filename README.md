@@ -29,4 +29,12 @@ Several approaches to prototype vectors identification of the APD exist, such as
 A more specialized strategy involves retaining only border prototypes—those located near the decision boundary (APD2). A prototype is considered a border sample if at least one of its neighbors belongs to an opposing class. The identification of these border samples can be efficiently achieved using graph-based methods, such as the Relative Nearest Neighbor Graph (RNNG) or the Gabriel Graph.
 
 
+## Installation
 
+```bash
+pip install .
+```
+
+```bash
+pip install https://github.com/AI-DIP/APD.git@DanielDev-Module
+```

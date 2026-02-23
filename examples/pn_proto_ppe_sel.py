@@ -9,13 +9,13 @@ from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score
 import tempfile
 import os
 import numpy as np
-from apdlib import classifiers as apd
+from src.adversarial_prototype_decomposition.classifier import classifiers as apd
 
-from apdlib.apd import APD2, APDBase
-from apdlib.sampler.glvq_sampler import GLVQ_Sampler
+from src.adversarial_prototype_decomposition.base.apd import APD2, APDBase
+from src.adversarial_prototype_decomposition.sampler.glvq_sampler import GLVQ_Sampler
 from utils.plot_utils import get_plot_regions_centres, get_plot, get_prototypes_plot_MDS
 from utils.mlflow_utils import save_fig_as_artefact, save_pandas_as_artefact
-from utils.apd_utils import get_proto_info, get_region_info
+from src.adversarial_prototype_decomposition.utils.apd_utils import get_proto_info, get_region_info
 from joblib import Parallel, delayed
 
 def asses_apd(X_train,y_train,X_test,y_test,max_depth,ccp,n_proto,ur):
@@ -117,7 +117,7 @@ proto_labels = estimator.proto_ensemble_.proto_labels
 regs = estimator.regions_
 mes = np.zeros((len(regs), proto.shape[1]))
 dfs = np.zeros((len(regs), proto.shape[1]))
-from visualization import umap_classification_pipeline
+from src.adversarial_prototype_decomposition.utils.visualization import umap_classification_pipeline
 
 X_umap, scaler_umap, umap_umap = umap_classification_pipeline(X_train,y_train,["normal","f1"], return_umap=True)
 

@@ -1,7 +1,7 @@
 # %% Imports
 import pandas as pd
 import numpy as np
-from visualization import tsne_classification_pipeline, pca_classification_pipeline, umap_classification_pipeline
+from src.adversarial_prototype_decomposition.utils.visualization import tsne_classification_pipeline, pca_classification_pipeline, umap_classification_pipeline
 from sklvq import GLVQ, GMLVQ, LGMLVQ
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 import matplotlib

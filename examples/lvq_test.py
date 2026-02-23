@@ -137,7 +137,7 @@ plt.scatter(xp1,xp2,c="k",marker='x',s=100)
 plt.show()
 
 #%%
-from visualization import tsne_classification_pipeline, pca_classification_pipeline, umap_classification_pipeline
+from src.adversarial_prototype_decomposition.utils.visualization import tsne_classification_pipeline, pca_classification_pipeline, umap_classification_pipeline
 
 Xd = np.vstack((X, Xp))
 yd = np.hstack((y_train,2*np.ones((yp.shape))))

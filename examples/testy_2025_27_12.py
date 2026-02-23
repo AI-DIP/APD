@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 
 from sklearn.tree import DecisionTreeClassifier
-from apdlib import classifiers as  apd
+from src.adversarial_prototype_decomposition.classifier import classifiers as  apd
 from imblearn.under_sampling import ClusterCentroids
 from sklearn.preprocessing import LabelEncoder
 

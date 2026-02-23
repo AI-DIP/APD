@@ -8,14 +8,14 @@ import mlflow
 import tempfile
 import os
 import numpy as np
-from apdlib import classifiers as  apd
+from src.adversarial_prototype_decomposition.classifier import classifiers as  apd
 from mlflow.data.pandas_dataset import from_pandas
 from imblearn.under_sampling import ClusterCentroids
 
-from apdlib.sampler.glvq_sampler import GLVQ_Sampler
+from src.adversarial_prototype_decomposition.sampler.glvq_sampler import GLVQ_Sampler
 from utils.plot_utils import get_plot_regions_centres, get_plot, get_prototypes_plot_MDS
 from utils.mlflow_utils import save_fig_as_artefact, save_pandas_as_artefact
-from utils.apd_utils import get_proto_info, get_region_info
+from src.adversarial_prototype_decomposition.utils.apd_utils import get_proto_info, get_region_info
 
 TEST_RUN = False
 APD_RUN = True

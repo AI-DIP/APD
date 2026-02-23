@@ -1,9 +1,12 @@
 import matplotlib.pyplot as plt
 import pandas as pd
-from apdlib import classifiers as apd
+from adversarial_prototype_decomposition.classifier import classifiers as apd
 
-def get_proto_info(model:apd.APD_Classifier, columns):
-    proto_info = pd.DataFrame(model.scaler.inverse_transform(model.proto_ensemble_.proto),columns = columns)
+def get_proto_info(model:apd.APD_ClassifierScaler, columns, scaler=None):
+    if scaler is None:
+        proto_info = pd.DataFrame(model.scaler.inverse_transform(model.proto_ensemble_.proto),columns = columns)
+    else:
+        proto_info = pd.DataFrame(scaler.inverse_transform(model.proto_ensemble_.proto),columns = columns)
     proto_info["Class"] = model.proto_ensemble_.proto_labels
     used = []
     for pair in model.region_stats["Pair"]:

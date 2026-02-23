@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import pandas as pd
-from ..apdlib import classifiers as apd
+from ....apdlib import classifiers as apd
 from sklearn.manifold import MDS
 
 def get_plot_regions_centres(

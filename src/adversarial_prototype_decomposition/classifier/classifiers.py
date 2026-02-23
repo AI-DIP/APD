@@ -11,7 +11,7 @@ from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from sklearn.utils.multiclass import unique_labels
 from sklearn.cluster import KMeans
 from imblearn.base import SamplerMixin
-from apdlib.apd import APD, APD2, APD3, PE
+from adversarial_prototype_decomposition.base.apd import APD, APD2, APD3, PE
 from joblib import Parallel, delayed
 import copy
 from scipy.spatial.distance import cdist
@@ -47,7 +47,7 @@ class APD_Classifier(BaseEstimator, ClassifierMixin):
         self.unbalanced_rate = unbalanced_rate
         self.min_support = min_support
         self.proto_selection = proto_selection
-        self.type = apd_type
+        self.apd_type = apd_type
         self.minimum_regions = minimum_regions = 2
         self.prune_regions = prune_regions
         self.n_jobs = n_jobs
@@ -62,23 +62,25 @@ class APD_Classifier(BaseEstimator, ClassifierMixin):
                 idx_all[idClass[idx]] = True
             Xp = X[idx_all, :]  # X of selected prototypes
             yp = y[idx_all]  # Y of selected prototypes
+        elif issubclass(type(self.proto_selection), tuple):
+            Xp, yp = self.proto_selection
         elif issubclass(type(self.proto_selection), SamplerMixin):
             Xp, yp = self.proto_selection.fit_resample(X, y)
         else:
             raise ValueError("Unknown prototype selection method")
-        if self.type == "apd":
+        if self.apd_type == "apd":
             apd = APD(Xp, yp, unbalanced_rate=self.unbalanced_rate, min_support=self.min_support,
                       minimum_n_regions=self.minimum_regions, prune_regions=self.prune_regions,
                       metric=self.metric)
-        elif self.type == "apd2":
+        elif self.apd_type == "apd2":
             apd = APD2(Xp, yp, unbalanced_rate=self.unbalanced_rate, min_support=self.min_support,
                        minimum_n_regions=self.minimum_regions, prune_regions=self.prune_regions,
                        metric=self.metric)
-        elif self.type == "apd3":
+        elif self.apd_type == "apd3":
             apd = APD3(Xp, yp, unbalanced_rate=self.unbalanced_rate, min_support=self.min_support,
                        minimum_n_regions=self.minimum_regions, prune_regions=self.prune_regions,
                        metric=self.metric)
-        elif self.type == "pe":
+        elif self.apd_type == "pe":
             apd = PE(Xp, yp, unbalanced_rate=self.unbalanced_rate, min_support=self.min_support, prune_regions=True,
                      minimum_n_regions=self.minimum_regions,metric=self.metric)
         else:
@@ -203,9 +205,10 @@ class EPPE_Classifier(VotingClassifier):
                          verbose=verbose)
 
 class APD_ClassifierScaler(APD_Classifier):
+    proto_scaled = False
     def __init__(self, 
                  base_estimator=RandomForestClassifier(), 
-                 type="apd", 
+                 apd_type="apd", 
                  unbalanced_rate=0.3, 
                  min_support=500, 
                  minimum_regions=1, 
@@ -215,7 +218,7 @@ class APD_ClassifierScaler(APD_Classifier):
                  metric: str = 'sqeuclidean',
                  scaler:StandardScaler = StandardScaler()):
         self.scaler = scaler
-        super().__init__(base_estimator, type, unbalanced_rate, min_support, minimum_regions, proto_selection, prune_regions, n_jobs, metric)
+        super().__init__(base_estimator, apd_type, unbalanced_rate, min_support, minimum_regions, proto_selection, prune_regions, n_jobs, metric)
 
     def fit(self, X: pd.DataFrame | np.ndarray, y: pd.DataFrame | np.ndarray):
         """
@@ -229,6 +232,12 @@ class APD_ClassifierScaler(APD_Classifier):
         X, y = check_X_y(X, y)
         X = self.scaler.fit_transform(X)
         self.classes_ = unique_labels(y)
+
+        if issubclass(type(self.proto_selection), tuple) and not self.proto_scaled:
+            pX , py = self.proto_selection
+            pX = self.scaler.transform(pX)
+            self.proto_selection = (pX,py)
+            self.proto_scaled = True
 
         apd = self._initialize_apd(X, y)
         self.proto_ensemble_ = apd

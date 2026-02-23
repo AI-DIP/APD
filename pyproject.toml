@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "adversarial-prototype-decomposition"
+version = "0.1.0"
+description = "Adversarial Prototype Decomposition"
+authors = [
+  { name="Marcin Blachnik", email="Marcin.Blachnik@polsl.pl" },
+  { name="Daniel Dąbrowski", email="Daniel.Dabrowski@polsl.pl" }
+]
+readme = "README.md"
+requires-python = ">=3.11.8"
+dependencies = [
+    "scikit-learn>=1.4.2",
+    "numpy",
+    "pandas",
+    "scipy",
+    "sklvq"
+]
+
+[project.urls]
+Homepage = "https://github.com/AI-DIP/APD"
+
+[tool.setuptools.packages.find]
+where = ["src"]

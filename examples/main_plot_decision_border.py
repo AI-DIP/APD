@@ -14,8 +14,8 @@ from sklearn.tree import DecisionTreeClassifier, export_text, plot_tree
 from sklearn.preprocessing import StandardScaler
 import sklearn.cluster as cc
 #import sklearn_extra.cluster as cce
-from apdlib import apd as ppelib
-from apdlib import classifiers as ppec
+from src.adversarial_prototype_decomposition.base import apd as ppelib
+from src.adversarial_prototype_decomposition.classifier import classifiers as ppec
 from scipy.spatial import Voronoi, voronoi_plot_2d
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.cluster import KMeans

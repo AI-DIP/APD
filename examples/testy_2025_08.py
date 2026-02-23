@@ -14,18 +14,18 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import cross_val_score, StratifiedKFold
 from sklearn.preprocessing import OneHotEncoder, LabelEncoder
 from sklearn.tree import DecisionTreeClassifier
-from apdlib.sampler.kmeans_sampler import SimpleClusterCentroids
+from src.adversarial_prototype_decomposition.sampler.kmeans_sampler import SimpleClusterCentroids
 from imblearn.under_sampling import ClusterCentroids
 from sklearn.pipeline import Pipeline
-from apdlib import classifiers as  apd
+from src.adversarial_prototype_decomposition.classifier import classifiers as  apd
 from sklearn.base import clone
 from sklearn import tree
 import matplotlib.pyplot as plt
 from sklearn.compose import ColumnTransformer
-from mlflow_connector import MlFlowConnector
-from GridSearch import GridSearch
-from new_metric import mlflow_scoring_wrapper
-from getParam import getCcpAlpha, getMaxDepth, getNPrototypes
+from src.adversarial_prototype_decomposition.utils.mlflow_connector import MlFlowConnector
+from src.adversarial_prototype_decomposition.utils.GridSearch import GridSearch
+from src.adversarial_prototype_decomposition.utils.new_metric import mlflow_scoring_wrapper
+from src.adversarial_prototype_decomposition.utils.getParam import getCcpAlpha, getMaxDepth, getNPrototypes
 import mlflow.data
 import os
 
