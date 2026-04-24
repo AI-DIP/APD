@@ -36,5 +36,5 @@ pip install .
 ```
 
 ```bash
-pip install https://github.com/AI-DIP/APD.git@DanielDev-Module
+pip install git+https://github.com/AI-DIP/APD.git@DanielDev-Module
 ```
