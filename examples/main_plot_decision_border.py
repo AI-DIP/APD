@@ -14,13 +14,14 @@ from sklearn.tree import DecisionTreeClassifier, export_text, plot_tree
 from sklearn.preprocessing import StandardScaler
 import sklearn.cluster as cc
 #import sklearn_extra.cluster as cce
-from src.adversarial_prototype_decomposition.base import apd as ppelib
-from src.adversarial_prototype_decomposition.classifier import classifiers as ppec
+from adversarial_prototype_decomposition.base import apd as ppelib
+from adversarial_prototype_decomposition.classifier import classifiers as ppec
+from adversarial_prototype_decomposition.sampler import GLVQ_Sampler
 from scipy.spatial import Voronoi, voronoi_plot_2d
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.cluster import KMeans
 import addcopyfighandler
-
+from sklearn.svm import SVC
 #mpl.use("QtAgg")
 
 def plotData(x, y, label1, label2=None, colors='rgb', markers=['.', '.'], markersize=3):
@@ -52,19 +53,21 @@ def plotData(x, y, label1, label2=None, colors='rgb', markers=['.', '.'], marker
 
 
 fName = "poly"
-df1 = pd.read_csv('Data/Results/train_regions.csv', sep=";")
-df1 = pd.read_csv("Data/banana.csv", sep = ",")
-df1 = pd.read_csv("Data/sin.csv", sep = ",")
-df1 = pd.read_csv("Data/4_clust.csv", sep = ",")
+# df1 = pd.read_csv('examples\\Data\\Results\\banana.csv', sep=",")
+# df1 = pd.read_csv("Data/banana.csv", sep = ",")
+# df1 = pd.read_csv("Data/sin.csv", sep = ",")
+# df1 = pd.read_csv("Data/4_clust.csv", sep = ",")
 #df1.columns = ["a1","a2","Class"]
 
-# df2 = pd.read_csv('Data/Results/proto_regions.csv',sep=";")
-proto_type = "CC_Banana"
-#proto_type = "manual"
+df1 = pd.read_csv('examples\\Data\\Results\\train_regions_1.csv', sep=";")
+# proto_type = "CC_Banana"
+proto_type = "manual"
 #proto_type = "SAMPLE"
 df11 = df1.copy()
-do_voronoi = False
-soSave = False
+DO_VORONOI = False
+PLOT_APD_TREE = False
+PLOT_DT = False
+DO_SAVE = False
 # df1 = df1.sample(500,axis=0)
 
 width, height = 8, 6
@@ -91,18 +94,24 @@ limy = (mi[0], mx[1])
 id1 = y == 1
 n = 2
 metric = "sqeuclidean"#"squeuclidian"#'cityblock'
+PX,PY = ClusterCentroids(estimator=KMeans(random_state=0, n_init=10),
+                             sampling_strategy={0: 3, 1: 3}).fit_resample(X,y)
+PY = pd.DataFrame(PY,columns=["Class"])
 model : ppec.APD_Classifier = ppec.APD_Classifier(
                    #type="pe",
                    apd_type="apd2",
-                   base_estimator=DecisionTreeClassifier(max_depth=1,min_samples_leaf=3),
+                   base_estimator=SVC(),
+                   #DecisionTreeClassifier(max_depth=3),
                    # proto_selection=ClusterCentroids(sampling_strategy={-1:5,1:5}),
-                   proto_selection=ClusterCentroids(sampling_strategy={0: 4, 1: 2}),#, estimator=cce.KMedoids(init="build")),
+                #    proto_selection=ClusterCentroids(sampling_strategy={0: 3, 1: 3}),#, estimator=cce.KMedoids(init="build")),
                    #proto_selection=ClusterCentroids(sampling_strategy={0: 6, 1: 4}),#, estimator=cce.KMedoids(init="build")),
+                   proto_selection=GLVQ_Sampler(prototype_n_per_class=np.array([3,3]), random="kmeans"),
+                #    proto_selection = (PX,PY),
                    unbalanced_rate=0.01,
                    minimum_regions=2,
                    min_support=100,
-                   n_jobs=6,
-                   metric= metric #'chebyshev'
+                #    metric= metric, #'chebyshev'
+                   prune_regions= True
                     )
 model.fit(X,y)
 PX = model.proto_ensemble_.proto
@@ -187,10 +196,12 @@ for pair in ux_protoPairs:
     x1 = PX.loc[[protos_id_to_row[i], protos_id_to_row[j]], "a1"]
     x2 = PX.loc[[protos_id_to_row[i], protos_id_to_row[j]], "a2"]
     plt.plot(x1, x2, 'r')
+if isinstance(apd, ppec.APD2_MIDDLE_POINT):
+    plt.plot(apd.pair_center[:,0],apd.pair_center[:,1],color="white",marker="+",linestyle="None", markersize=20)
 ax = plt.gca()
  # = df2[["a1","a2"]].values
 # p = np.vstack([p, [[0, 1],[1, 0]]])
-if do_voronoi:
+if DO_VORONOI:
     vor = Voronoi(p)
     voronoi_plot_2d(vor,
                     ax=ax,
@@ -209,27 +220,30 @@ plt.scatter(PX.a1[idC2], PX.a2[idC2], c='r', marker='o', s=100)
 # plt.colormap(hot)
 plt.xlim(limx)
 plt.ylim(limy)
-if soSave:
+if DO_SAVE:
     plt.savefig(f'pic/local_ppd_scatter.png', bbox_inches='tight')
 
-for i,id in enumerate(model.fitted_base_models_):
-    plt.figure(10+i,clear=True)
-    plot_tree(model.fitted_base_models_[id])
-    if soSave:
-        plt.savefig(f'pic/local_ppd_tree_{i}.png', bbox_inches='tight')
+if PLOT_APD_TREE:
+    for i,id in enumerate(model.fitted_base_models_):
+        plt.figure(10+i,clear=True)
+        plot_tree(model.fitted_base_models_[id])
+        if DO_SAVE:
+            plt.savefig(f'pic/local_ppd_tree_{i}.png', bbox_inches='tight')
 
+if PLOT_DT:
 #%%
-plt.figure(20,clear=True)
-model_ref = DecisionTreeClassifier(max_depth=5, min_samples_leaf=5)
-model_ref.fit(X, y)
-plot_tree(model_ref)
-if soSave:
-    plt.savefig(f'pic/local_tree_single.png', bbox_inches='tight')
+    plt.figure(20,clear=True)
+    model_ref = DecisionTreeClassifier(max_depth=5, min_samples_leaf=5)
+    model_ref.fit(X, y)
+    plot_tree(model_ref)
+    if DO_SAVE:
+        plt.savefig(f'pic/local_tree_single.png', bbox_inches='tight')
 
-plt.figure(50, clear=True)
-dcc_ref = model_ref.predict(xyc)
-dcc_ref = np.reshape(dcc_ref, Xc.shape)
-cp = plt.contourf(Xc, Yc, dcc_ref, alpha=0.7, cmap="Dark2")#"gist_ncar")  # c# olors=cols)
-plt.scatter(X[:,0], X[:,1], c=y,marker='o',  s=30, cmap="Paired")
-if soSave:
-    plt.savefig(f'pic/local_tree_scatter.png', bbox_inches='tight')
+    plt.figure(50, clear=True)
+    dcc_ref = model_ref.predict(xyc)
+    dcc_ref = np.reshape(dcc_ref, Xc.shape)
+    cp = plt.contourf(Xc, Yc, dcc_ref, alpha=0.7, cmap="Dark2")#"gist_ncar")  # c# olors=cols)
+    plt.scatter(X[:,0], X[:,1], c=y,marker='o',  s=30, cmap="Paired")
+    if DO_SAVE:
+        plt.savefig(f'pic/local_tree_scatter.png', bbox_inches='tight')
+plt.show()        

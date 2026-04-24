@@ -121,6 +121,8 @@ class GLVQ_Sampler(BaseUnderSampler):
     ):
         super().__init__(sampling_strategy=sampling_strategy)
         self.random_state = random_state
+        if not isinstance(prototype_n_per_class, np.ndarray):
+            prototype_n_per_class = np.array(prototype_n_per_class)
         self.prototype_n_per_class = prototype_n_per_class
         self.solver_params = solver_params
         self.estimator_ = None
@@ -135,7 +137,11 @@ class GLVQ_Sampler(BaseUnderSampler):
         if self.random is None:
             self.estimator_.fit(X,y)
         elif self.random == "kmeans":
-            kmeans = ClusterCentroids(sampling_strategy={0: self.prototype_n_per_class[0], 1: self.prototype_n_per_class[1]})
+            ss = {}
+            for i, p in enumerate(self.prototype_n_per_class):
+                ss[i]=p
+            print(ss)
+            kmeans = ClusterCentroids(sampling_strategy=ss)
             Xp,yp = kmeans.fit_resample(X,y)
             X,y = self.estimator_._check_data_and_labels(X,y)
             self.estimator_.random_state_ = check_random_state(self.estimator_.random_state)
@@ -266,6 +272,7 @@ class GMLVQ_Sampler(BaseUnderSampler):
             X,y = self.estimator_._check_data_and_labels(X,y)
             self.estimator_.random_state_ = check_random_state(self.estimator_.random_state)
             self.estimator_._before_fit(X,y)
+            
             kmeans = ClusterCentroids(sampling_strategy={0: self.prototype_n_per_class[0], 1: self.prototype_n_per_class[1]})
             Xp,yp = kmeans.fit_resample(X,y)
             self.estimator_.set_prototypes(Xp)

@@ -1,5 +1,5 @@
 from abc import abstractmethod
-
+from collections import Counter
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -7,7 +7,7 @@ import matplotlib as mpl
 import numpy as np
 import math
 
-
+from itertools import combinations
 from scipy.spatial import Voronoi, voronoi_plot_2d
 from scipy.spatial.distance import cdist
 
@@ -70,6 +70,11 @@ class APDBase:
         return X,y
 
     @staticmethod
+    def _change_rank(rank, new_rank, force:bool=False):
+        if new_rank < rank or force:return new_rank
+        return rank
+
+    @staticmethod
     def pairCantor(a, b):
         """
         Pairing function using Cantar formula
@@ -101,7 +106,6 @@ class APDBase:
         min_support = self.min_support
         ux_pairs = pairs.keys()
         ux_labels = self.ux
-
         stats = {"Pair": [],
                  'Class1': [],
                  'Class2': [],
@@ -288,6 +292,7 @@ class APD(APDBase):
                 pairs = self._generate_regions_assign(X, ux_pairs, dist)
                 stats = self._getRegionStats(X, y, pairs)
         self.region_stats = stats
+        self.pairs = pairs
         return pairs
 
     def _generate_regions_assign(self, X: np.ndarray, regions: list | np.ndarray, dist: np.ndarray = None) -> dict:
@@ -390,24 +395,27 @@ class APD2_MIDDLE_POINT(APD2):
         self.ux = ux  # Get labels
         X, y = self._prepare_data(X, y)
         ux_pairs = self._get_possible_pairs(X, y)
-        print(f"######\n{ux_pairs}")
         self.pair_center = self._connect_pairs(ux_pairs)
-        print(f"******\n{self.pair_center}")
-        print(f"------\n{self.proto}")
+        self.removed_pair_center = None
         dist = cdist(X, self.pair_center, metric=self.metric)
         self._update_inverted_index(ux_pairs)
         pairs = self._generate_regions_assign(X, ux_pairs, dist)
         stats = self._getRegionStats(X, y, pairs)
-        print(f"+++++++\n{stats}")
         ux_pairs = list(pairs.keys())
         if self.prune_regions:
             # If samples do not fulfill given statisitcs, reasign these samples to one of existing regions
+            self.removed_pair_center = []
             while ((pair := self._get_most_corrupted_regin(stats)) != -1) and (len(ux_pairs)>self.minimum_n_regions):
+                idx = ux_pairs.index(pair)
+                self.removed_pair_center.append(self.pair_center[idx])
+                self.pair_center = np.delete(self.pair_center,idx,axis=0)
                 ux_pairs.remove(pair)
                 self._update_inverted_index(ux_pairs)
                 pairs = self._generate_regions_assign(X, ux_pairs, dist)
                 stats = self._getRegionStats(X, y, pairs)
+            self.removed_pair_center = np.array(self.removed_pair_center)
         self.region_stats = stats
+        self.pairs = pairs
         return pairs
     
     def assign_regions(self, X:np.ndarray, regions: list|np.ndarray, dist: np.ndarray = None) -> dict:
@@ -421,7 +429,7 @@ class APD2_MIDDLE_POINT(APD2):
         regions = self._check_regions(regions)
 
         if dist is None:
-            dist = cdist(X, self.proto, metric=self.metric)
+            dist = cdist(X, self.pair_center, metric=self.metric)
         ds = np.zeros((dist.shape[0],
                        regions.shape[0]))  # Allocate memory to store the results - distances to prototypes constituting given pair
         for i,p in enumerate(regions):
@@ -434,6 +442,223 @@ class APD2_MIDDLE_POINT(APD2):
           # Convert a list of unique pairs to the full array of new pairs
         return out
 
+class APD2_MULTI_CLASS(APD2):
+    
+    def _get_possible_pairs(self, X, y) -> np.ndarray:
+        ux = np.unique(y)
+        PY = self.proto_labels
+        P = self.proto
+        dist = cdist(P, P, metric=self.metric)
+
+        n = P.shape[0]
+        idPosN = []
+        idNegN = []
+
+        for class_pos, class_neg in combinations(ux, 2):
+            idPos = np.nonzero(PY == class_pos)[0]
+            idNeg = np.nonzero(PY == class_neg)[0]
+
+            for a in idPos:
+                for b in idNeg:
+                    d_ab = dist[a, b]
+                    chk = True
+                    for c in range(n):
+                        if c == a or c == b:
+                            continue
+                        d_ac = dist[a, c]
+                        d_bc = dist[b, c]
+                        if d_ac + d_bc <= d_ab:
+                            chk = False
+                            break
+                    if chk:
+                        idPosN.append(a)
+                        idNegN.append(b)
+
+            idPos = np.nonzero(PY == class_neg)[0]
+            idNeg = np.nonzero(PY == class_pos)[0]
+
+            for a in idPos:
+                for b in idNeg:
+                    d_ab = dist[a, b]
+                    chk = True
+                    for c in range(n):
+                        if c == a or c == b:
+                            continue
+                        d_ac = dist[a, c]
+                        d_bc = dist[b, c]
+                        if d_ac + d_bc <= d_ab:
+                            chk = False
+                            break
+                    if chk:
+                        idPosN.append(a)
+                        idNegN.append(b)
+
+        pairs = self.pairCantor(np.array(idPosN), np.array(idNegN))
+        return pairs
+    
+    def generate_regions(self, X:pd.DataFrame|np.ndarray, y:pd.DataFrame|np.ndarray) -> dict:
+        """
+        For input data and already known prototype pairs it assigns samples to given region
+        :param X:
+        :param y:
+        :return: a dict with keys equal regions id and values equal to samples from X indexes assigned to given region
+        """
+        ux = np.unique(self.proto_labels)
+        self.ux = ux  # Get labels
+        X, y = self._prepare_data(X, y)
+        ux_pairs = self._get_possible_pairs(X, y)
+        dist = cdist(X, self.proto, metric=self.metric)
+        self._update_inverted_index(ux_pairs)
+        pairs = self._generate_regions_assign(X, ux_pairs, dist)
+        stats = self._getRegionStats(X, y, pairs)
+        ux_pairs = list(pairs.keys())
+        if self.prune_regions:
+            # If samples do not fulfill given statisitcs, reasign these samples to one of existing regions
+            while ((pair := self._get_most_corrupted_regin(stats)) != -1) and (len(ux_pairs)>self.minimum_n_regions):
+                ux_pairs.remove(pair)
+                self._update_inverted_index(ux_pairs)
+                pairs = self._generate_regions_assign(X, ux_pairs, dist)
+                stats = self._getRegionStats(X, y, pairs)
+        self.region_stats = stats
+        self.pairs = pairs
+        return pairs
+
+class APD_MULTI_CLASS(APD):
+    def _getRegionStats(self, X, y, pairs):
+        """
+        Function gets as inpyt labeled data, and region assigment and returns and calculates statists over the regions.
+        This statistis in a form of a pandas Dataframe is returned where one column is a region_id (can be set as index),
+         and the remining columns are: numer of samples in each class in each region (Class1, Class2) and rank which determines the quality
+         of a region. The following rank values can be assigned:
+         0 - a region contains samples of only one class
+         1 - if a region has less samples the defined by the min_support = the minimum number of samples in a region
+         2 - if relation between samples of one class over samples from another class is not above a certain threshold:
+            np.minimum(s1/s2,s2/s1) < inbalanced_rate - its aim is to keep the number of samples at certain level
+        represent statistics including
+        :param X: training set
+        :param y: labels of the training set
+        :param pairs: a dict whos keys are unique_regions id and values are indexes of the elements which belongs to given region
+        :return: a DataFrame with statistics for each region
+        """
+        inbalanced_rate = self.unbalanced_rate
+        min_support = self.min_support
+        ux_pairs = pairs.keys()
+        ux_labels = self.ux
+        ux_labels_counter = Counter(y)
+        ratio_arr = np.array([ux_labels_counter[l] / len(y) for l in ux_labels])
+        # ratio = {k:v/len(y) for k,v in ux_labels_counter.items()}
+        # stats = {"Pair": [],
+        #          'Class1': [],
+        #          'Class2': [],
+        #          'rank': []}
+        stats = {
+            "Pair":[],
+            "rank":[]
+        }
+        for ux_label in ux_labels:
+            stats[f"Class{ux_label}"] = []
+        
+        for pair in ux_pairs:
+            id = pairs[pair]
+            rank = 100
+            region = y[id]
+            region_size = len(region)
+
+            labels, counts = np.unique(region, return_counts=True)
+            count_map = dict(zip(labels, counts))
+
+            #Check empty class
+            counts_arr = np.array([count_map.get(l, 0) for l in ux_labels])
+            for i, ux_label in enumerate(ux_labels):
+                stats[f"Class{ux_label}"].append(counts_arr[i])
+            non_empty_class = np.sum(counts_arr > 0)
+            if(non_empty_class < 2):
+                rank = APDBase._change_rank(rank, 0)
+            
+            #Check minsupport
+            if(region_size < min_support):
+                rank = APDBase._change_rank(rank, 1)
+            
+            #Check unbalanced rate
+            fractions = counts_arr / region_size
+            thresholds = 1 - inbalanced_rate * ratio_arr
+
+            if np.any(fractions >= thresholds):
+                rank = APDBase._change_rank(rank, 2)
+            
+            stats['Pair'].append(pair)
+            stats['rank'].append(rank)
+        stats_df = pd.DataFrame(stats)
+        return stats_df
+
+    def _get_possible_pairs(self, X, y) -> np.ndarray:
+        PY = self.proto_labels
+        P = self.proto
+
+        dist = cdist(X, P, metric=self.metric)
+        
+        all_pairs = []
+        
+        for i in range(len(X)):
+            xi_dist = dist[i]
+            label_i = y[i]
+            
+            same_class_idx = np.where(PY == label_i)[0]
+            other_class_idx = np.where(PY != label_i)[0]
+            
+            pos_idx = same_class_idx[np.argmin(xi_dist[same_class_idx])]
+            neg_idx = other_class_idx[np.argmin(xi_dist[other_class_idx])]
+            
+            if pos_idx > neg_idx:
+                pos_idx, neg_idx = neg_idx, pos_idx
+            
+            all_pairs.append(self.pairCantor(pos_idx, neg_idx))
+        
+        return np.unique(all_pairs)
+    
+    def generate_regions(self, X:pd.DataFrame|np.ndarray, y:pd.DataFrame|np.ndarray) -> dict:
+        """
+        For input data and already known prototype pairs it assigns samples to given region
+        :param X:
+        :param y:
+        :return: a dict with keys equal regions id and values equal to samples from X indexes assigned to given region
+        """
+        ux = np.unique(self.proto_labels)
+        self.ux = ux  # Get labels
+        X, y = self._prepare_data(X, y)
+        values, proto = np.unique(y,return_counts=True)
+        # self.pro = 
+        ux_pairs = self._get_possible_pairs(X, y)
+        dist = cdist(X, self.proto, metric=self.metric)
+        self._update_inverted_index(ux_pairs)
+        pairs = self._generate_regions_assign(X, ux_pairs, dist)
+        stats = self._getRegionStats(X, y, pairs)
+        ux_pairs = list(pairs.keys())
+        if self.prune_regions:
+            print(stats)
+            # If samples do not fulfill given statisitcs, reasign these samples to one of existing regions
+            while ((pair := self._get_most_corrupted_regin(stats)) != -1) and (len(ux_pairs)>self.minimum_n_regions):
+                ux_pairs.remove(pair)
+                self._update_inverted_index(ux_pairs)
+                pairs = self._generate_regions_assign(X, ux_pairs, dist)
+                stats = self._getRegionStats(X, y, pairs)
+        print("END STATS")
+        print(stats)
+        self.region_stats = stats
+        self.pairs = pairs
+        return pairs
+
+class APD2_TRAIN_ON_PROTOS(APD2):
+    def generate_regions(self, X:pd.DataFrame|np.ndarray, y:pd.DataFrame|np.ndarray) -> dict:
+        pairs = super().generate_regions(X, y)
+        self.pairs = pairs
+        return pairs
+    
+    # def add_more_data(self, pairs, X, y):
+    #     dist = cdist(X, self.proto, metric=self.metric)
+    #     for pair in pairs:
+    #         p0, p1 = self.unpairCantor(pair)
+    #         pass
 
 class APD3(APD):
     """
@@ -621,6 +846,7 @@ class PE(APDBase):
                 regions = self.assign_regions(X, ux_regions, dist)
                 stats = super()._getRegionStats(X, y, regions)
         self.region_stats = stats
+        self.pairs = pairs
         return regions
 
 

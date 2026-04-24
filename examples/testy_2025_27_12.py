@@ -1,9 +1,11 @@
 #%%
+import os
+os.environ["OMP_NUM_THREADS"] = "1"
 import pandas as pd
 import numpy as np
 
 from sklearn.tree import DecisionTreeClassifier
-from src.adversarial_prototype_decomposition.classifier import classifiers as  apd
+from adversarial_prototype_decomposition.classifier import classifiers as  apd
 from imblearn.under_sampling import ClusterCentroids
 from sklearn.preprocessing import LabelEncoder
 
@@ -11,7 +13,7 @@ from sklearn.preprocessing import LabelEncoder
 N_PROTO = 3
 MAX_DEPTH = 3
 #%% LOAD DATASET
-path_train_data = "Data\\banana.csv"
+path_train_data = "examples\\Data\\Results\\banana.csv"
 train_data = pd.read_csv(path_train_data, sep=",")
 ohe = LabelEncoder()
 
@@ -24,8 +26,8 @@ y_train = ohe.fit_transform(y_train)
 #%% CREATE MODEL
 
 base_estimator = DecisionTreeClassifier(max_depth=MAX_DEPTH)
-estimator = apd.APD_ClassifierScaler(
-    type="apd2",
+estimator = apd.APD_Classifier(
+    apd_type="apd2",
     base_estimator= base_estimator,
     min_support=100,
     unbalanced_rate= 0.1,
@@ -36,7 +38,7 @@ estimator.fit(X_train, y_train)
 
 # %% predict proba
 proba = estimator.predict_proba(X_train)
-dist,regions = estimator.get_competency(X_train)
+c = estimator.get_competency(X_train)
 test = estimator.proto_ensemble_.assign_regions(X_train, estimator.regions_)
 
 

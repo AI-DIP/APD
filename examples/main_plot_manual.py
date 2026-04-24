@@ -49,6 +49,7 @@ def plotData(x, y, label1, label2=None, colors='rgb', markers=['.', '.'], marker
 
 fName = "poly"
 df1 = pd.read_csv('examples\\Data\\Results\\train_regions_1.csv', sep=";")
+# df1 = pd.read_csv('examples\\Data\\Results\\banana.csv', sep=",")
 #df1 = pd.read_csv("Data/banana.csv", sep = ",")
 #df1.columns = ["a1","a2","Class"]
 # df2 = pd.read_csv('Data/Results/proto_regions.csv',sep=";")
@@ -72,6 +73,7 @@ mx = np.max(X, axis=0)
 limx = (mi.a1, mx.a1)
 limy = (mi.a2, mx.a2)
 
+
 id1 = y == 1
 n = 2
 if proto_type=="SAMPLE":
@@ -90,15 +92,14 @@ elif proto_type=="manual":
              pd.DataFrame([[ 1.],[ 1.],[ 1.],[0.],[0.]], columns=["Class"]).reset_index(drop=True))
 
 
-apd = apdlib.APD2_MIDDLE_POINT(proto=PX,
+apd = apdlib.APD2(proto=PX,
                   proto_labels=PY,
                   unbalanced_rate=0.05,
                   min_support=100,
-                  prune_regions=True,
+                  prune_regions=False,
                   minimum_n_regions=1)
 # #    apdlib.APD(P, PY,unbalanced_rate=0, min_support=1))
 regions = apd.generate_regions(X, y)
-
 ux_protoPairs = list(regions.keys())
 stats = apd.region_stats
 
@@ -159,7 +160,9 @@ plotData(PX.a1, PX.a2, PY.Class, markers=['*', 'o'], colors='rr', markersize=15)
 
 if isinstance(apd, apdlib.APD2_MIDDLE_POINT):
     plt.plot(apd.pair_center[:,0],apd.pair_center[:,1],color="white",marker="+",linestyle="None", markersize=20)
-
+if isinstance(apd, apdlib.APD2_MIDDLE_POINT):
+    if(apd.removed_pair_center is not None and len(apd.removed_pair_center) != 0):
+        plt.plot(apd.removed_pair_center[:,0],apd.removed_pair_center[:,1],color="black",marker="+",linestyle="None", markersize=20)
 PX.reset_index(inplace=True, drop=True)
 protos_id_to_row = dict(zip(protos_id,range(len(protos_id)))) #Mapowanie proto_id na numer wiersza
 for pair in ux_protoPairs:
@@ -179,6 +182,7 @@ if do_voronoi:
 
 
 cp = plt.contourf(Xc, Yc, qcc, alpha=0.7, cmap="gist_ncar")  # colors=cols)
+plt.show()
 plt.xlim(limx)
 plt.ylim(limy)
 plt.show()

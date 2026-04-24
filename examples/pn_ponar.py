@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import tempfile
 import os
 import mlflow
+import pickle
 ## FROM
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from imblearn.under_sampling import ClusterCentroids
@@ -41,12 +42,12 @@ EXCLUDE_METADATA = ["LABEL", "id", "id.1", "id.2", "id.3", "Applied torque"]
 EXCLUDE_FLOW = ["Flow - leak line", "Flow - output"]
 EXCLUDE_SENSEOR = ["Sensor 1", "Sensor 2", "Sensor 3"]
 EXCLUDE_OTHER = ["Temp. diff"]
-EXCLUDE = [*EXCLUDE_METADATA, *EXCLUDE_OTHER, *EXCLUDE_SENSEOR]
+EXCLUDE = [*EXCLUDE_METADATA]#, *EXCLUDE_OTHER]#, *EXCLUDE_SENSEOR]
 ##RUN
 TEST_RUN = False
 USE_PREVIOUS_PROTO = True
 APD_RUN = True
-EXP_NAME= "PN_POMAR_11"
+EXP_NAME= "PN_POMAR_14"
 
 if TEST_RUN:
     EXP_NAME = "APD_TEST"
@@ -120,7 +121,7 @@ scaler = StandardScaler()
 X_train = scaler.fit_transform(X_train,y_train)
 X_test1 = scaler.transform(X_test1)
 X_test2 = scaler.transform(X_test2)
-
+scaler_pickle = pickle.dumps(scaler)
 # %%3.TEST
 
 ##LAST RUN
@@ -199,19 +200,22 @@ for run_number,params in enumerate(list_of_dicts):
         ## change if APD run
         if APD_RUN:
             mlflow.log_params(clf.get_params())
-            estimator = APD_Classifier(
-                            apd_type="apd2",
+            estimator = APD_ClassifierScaler(
+                            apd_type="apd2_middle_point",
                             base_estimator= clf,
                             min_support=min_suports,
                             unbalanced_rate= unbalanced_rates,
                             metric=dist_metric,
-                            proto_selection=proto
+                            proto_selection=proto,
+                            scaler=scaler_pickle,
+                            scaler_mode="est"
                         )
         
         mlflow.log_param("n_prototypes",n_proto)
         mlflow.log_params(estimator.get_params())
         mlflow.set_tag("PROTO",proto_selection)
-        mlflow.set_tag("DATA","FLOW_NO_TEMP")
+        # mlflow.set_tag("DATA","NO_TEMP")
+        mlflow.set_tag("DATA","ALL")
 
         ## CROSS VALIDATION
         kf = StratifiedKFold(n_splits=10, shuffle=False)
